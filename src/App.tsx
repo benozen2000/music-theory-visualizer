@@ -1,10 +1,58 @@
+import { useState } from 'react'
+import { Chord, Scale } from 'tonal'
 import { useMusicState } from '@/hooks/useMusicState'
 import { CircleOfFifths } from '@/components/CircleOfFifths'
 import { GuitarFretboard } from '@/components/GuitarFretboard'
 import { ConfigPanel } from '@/components/ConfigPanel'
+import { ChordScaleFinder } from '@/components/ChordScaleFinder'
 
 function App() {
   const { state, actions, computed } = useMusicState()
+
+  // Chord/Scale finder state
+  const [finderMode, setFinderMode] = useState<'off' | 'chord' | 'scale'>('off')
+  const [selectedNotes, setSelectedNotes] = useState<string[]>([])
+  const [showAllNotes, setShowAllNotes] = useState(false)
+
+  // Toggle note selection on fretboard
+  const handleNoteSelect = (note: string) => {
+    if (finderMode === 'off') return
+
+    setSelectedNotes(prev => {
+      if (prev.includes(note)) {
+        return prev.filter(n => n !== note)
+      }
+      return [...prev, note]
+    })
+  }
+
+  // Clear selected notes
+  const clearSelectedNotes = () => {
+    setSelectedNotes([])
+  }
+
+  // Detect chord from selected notes
+  const detectedChords = selectedNotes.length >= 2
+    ? Chord.detect(selectedNotes)
+    : []
+
+  // Detect scales from selected notes
+  const detectedScales = selectedNotes.length >= 3
+    ? Scale.detect(selectedNotes).slice(0, 8)
+    : []
+
+  // Determine which notes to highlight on fretboard
+  const fretboardNotes = finderMode !== 'off'
+    ? selectedNotes
+    : computed.activeNotes
+
+  const fretboardTonic = finderMode !== 'off'
+    ? (selectedNotes[0] || state.tonic)
+    : state.tonic
+
+  const fretboardBass = finderMode !== 'off'
+    ? (selectedNotes[0] || state.tonic)
+    : (state.viewMode === 'chord' ? computed.activeNotes[0] : state.tonic)
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
@@ -25,7 +73,7 @@ function App() {
           <div className="flex justify-center">
             <CircleOfFifths
               tonic={state.tonic}
-              activeNotes={computed.activeNotes}
+              activeNotes={finderMode !== 'off' ? selectedNotes : computed.activeNotes}
               mode={state.viewMode === 'scale' ? state.mode : 'major'}
               accidentalMode={state.accidentalMode}
               onSelectTonic={actions.setTonic}
@@ -43,10 +91,29 @@ function App() {
 
         {/* Guitar Fretboard */}
         <GuitarFretboard
-          activeNotes={computed.activeNotes}
-          tonic={state.tonic}
-          bassNote={state.viewMode === 'chord' ? computed.activeNotes[0] : state.tonic}
+          activeNotes={fretboardNotes}
+          tonic={fretboardTonic}
+          bassNote={fretboardBass}
           tuning={computed.currentTuning}
+          showAllNotes={showAllNotes}
+          selectionMode={finderMode !== 'off'}
+          selectedNotes={selectedNotes}
+          onNoteSelect={handleNoteSelect}
+        />
+
+        {/* Divider */}
+        <div className="my-8 border-t border-border" />
+
+        {/* Chord/Scale Finder */}
+        <ChordScaleFinder
+          finderMode={finderMode}
+          setFinderMode={setFinderMode}
+          showAllNotes={showAllNotes}
+          setShowAllNotes={setShowAllNotes}
+          selectedNotes={selectedNotes}
+          clearSelectedNotes={clearSelectedNotes}
+          detectedChords={detectedChords}
+          detectedScales={detectedScales}
         />
       </div>
     </div>

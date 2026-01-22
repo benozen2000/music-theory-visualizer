@@ -15,6 +15,10 @@ interface GuitarFretboardProps {
   tonic: string
   bassNote?: string
   tuning: StringTuning[]
+  showAllNotes?: boolean
+  selectionMode?: boolean
+  selectedNotes?: string[]
+  onNoteSelect?: (note: string) => void
 }
 
 const FRET_MARKERS = [3, 5, 7, 9, 12, 15]
@@ -28,7 +32,16 @@ const OCTAVE_COLORS: Record<number, string> = {
   5: 'bg-octave-5',
 }
 
-export function GuitarFretboard({ activeNotes, tonic, bassNote, tuning }: GuitarFretboardProps) {
+export function GuitarFretboard({
+  activeNotes,
+  tonic,
+  bassNote,
+  tuning,
+  showAllNotes = false,
+  selectionMode = false,
+  selectedNotes = [],
+  onNoteSelect,
+}: GuitarFretboardProps) {
   const effectiveBass = bassNote || tonic
   const fretboardNotes = useMemo(() => generateFretboardNotes(tuning), [tuning])
 
@@ -43,31 +56,43 @@ export function GuitarFretboard({ activeNotes, tonic, bassNote, tuning }: Guitar
     })
 
     return grid
-  }, [fretboardNotes])
+  }, [fretboardNotes, tuning.length])
+
+  const handleNoteClick = (note: string) => {
+    if (selectionMode && onNoteSelect) {
+      onNoteSelect(note)
+    }
+  }
 
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-text">Fretboard Visualizer</h2>
         <div className="flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-primary"></span>
-            <span className="text-text-muted">Root</span>
-          </div>
-          {bassNote && bassNote !== tonic && (
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-white ring-1 ring-primary"></span>
-              <span className="text-text-muted">Bass</span>
-            </div>
+          {selectionMode ? (
+            <span className="text-primary text-sm">Click notes to select</span>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-primary"></span>
+                <span className="text-text-muted">Root</span>
+              </div>
+              {bassNote && bassNote !== tonic && (
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-white ring-1 ring-primary"></span>
+                  <span className="text-text-muted">Bass</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-octave-3"></span>
+                <span className="text-text-muted">Oct 3</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-octave-4"></span>
+                <span className="text-text-muted">Oct 4</span>
+              </div>
+            </>
           )}
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-octave-3"></span>
-            <span className="text-text-muted">Oct 3</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-octave-4"></span>
-            <span className="text-text-muted">Oct 4</span>
-          </div>
         </div>
       </div>
 
@@ -131,29 +156,46 @@ export function GuitarFretboard({ activeNotes, tonic, bassNote, tuning }: Guitar
                         const isActive = isNoteActive(note.note, activeNotes)
                         const isRoot = isRootNote(note.note, tonic)
                         const isBass = isRootNote(note.note, effectiveBass)
+                        const isSelected = selectedNotes.includes(note.note)
+                        // In selection mode, always show all notes
+                        const shouldShow = selectionMode || showAllNotes || isActive
 
                         return (
                           <div
                             key={fret}
                             className={cn(
                               'flex-1 h-10 flex items-center justify-center relative',
-                              fret > 0 && 'border-l border-zinc-700'
+                              fret > 0 && 'border-l border-zinc-700',
+                              selectionMode && 'cursor-pointer'
                             )}
+                            onClick={() => handleNoteClick(note.note)}
                           >
-                            {isActive && (
+                            {shouldShow && (
                               <motion.div
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
+                                whileHover={selectionMode ? { scale: 1.2 } : undefined}
                                 className={cn(
                                   'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold z-10',
-                                  isRoot
-                                    ? 'bg-primary text-white ring-2 ring-primary-hover'
-                                    : isBass
-                                    ? 'bg-white text-background ring-2 ring-primary'
-                                    : cn(
-                                        OCTAVE_COLORS[note.octave] || 'bg-zinc-500',
-                                        'text-white'
-                                      )
+                                  selectionMode
+                                    ? isSelected
+                                      // Platinum/silver look for selected notes
+                                      ? 'bg-gradient-to-br from-gray-100 via-gray-300 to-gray-400 text-gray-800 ring-2 ring-white shadow-lg'
+                                      // Octave colors for unselected notes in selection mode
+                                      : cn(
+                                          OCTAVE_COLORS[note.octave] || 'bg-zinc-500',
+                                          'text-white opacity-70 hover:opacity-100'
+                                        )
+                                    : isRoot
+                                      ? 'bg-primary text-white ring-2 ring-primary-hover'
+                                      : isBass
+                                        ? 'bg-white text-background ring-2 ring-primary'
+                                        : showAllNotes && !isActive
+                                          ? 'bg-zinc-700 text-zinc-400'
+                                          : cn(
+                                              OCTAVE_COLORS[note.octave] || 'bg-zinc-500',
+                                              'text-white'
+                                            )
                                 )}
                               >
                                 {note.note}
