@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Scale, Music, ChevronDown, ChevronUp } from 'lucide-react'
+import { Scale, Music, ChevronDown, ChevronUp, Guitar } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ALL_NOTES, SCALE_MODES, CHORD_TYPES, TUNING_PRESETS } from '@/lib/music-theory'
+import { ALL_NOTES, SCALE_MODES, CHORD_TYPES, GUITAR_TUNING_PRESETS, BASS_TUNING_PRESETS } from '@/lib/music-theory'
 import type { MusicState, MusicStateActions } from '@/hooks/useMusicState'
 
 interface ConfigPanelProps {
@@ -20,10 +20,13 @@ const TUNING_NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#'
 const OCTAVES = [1, 2, 3, 4, 5]
 
 export function ConfigPanel({ state, actions }: ConfigPanelProps) {
-  const { tonic, viewMode, mode, chordType, inversion, accidentalMode, tuningPreset, customTuning } = state
-  const { setTonic, setViewMode, setMode, setChordType, setInversion, setAccidentalMode, setTuningPreset, setCustomTuning } = actions
+  const { instrument, tonic, viewMode, mode, chordType, inversion, accidentalMode, tuningPreset, customTuning } = state
+  const { setInstrument, setTonic, setViewMode, setMode, setChordType, setInversion, setAccidentalMode, setTuningPreset, setCustomTuning } = actions
 
   const [showTuning, setShowTuning] = useState(false)
+
+  // Get the appropriate tuning presets based on instrument
+  const tuningPresets = instrument === 'guitar' ? GUITAR_TUNING_PRESETS : BASS_TUNING_PRESETS
 
   const handleCustomTuningChange = (stringIndex: number, field: 'note' | 'octave', value: string | number) => {
     const newTuning = [...customTuning]
@@ -39,6 +42,39 @@ export function ConfigPanel({ state, actions }: ConfigPanelProps) {
     <div className="bg-surface rounded-xl p-6 w-full max-w-md">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-primary">Configuration</h2>
+      </div>
+
+      {/* Instrument Selector */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-text-muted mb-2">
+          Instrument
+        </label>
+        <div className="flex bg-background rounded-lg p-1">
+          <button
+            onClick={() => setInstrument('guitar')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md text-sm font-medium transition-colors',
+              instrument === 'guitar'
+                ? 'bg-surface-hover text-text'
+                : 'text-text-muted hover:text-text'
+            )}
+          >
+            <Guitar className="w-4 h-4" />
+            Guitar
+          </button>
+          <button
+            onClick={() => setInstrument('bass')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md text-sm font-medium transition-colors',
+              instrument === 'bass'
+                ? 'bg-surface-hover text-text'
+                : 'text-text-muted hover:text-text'
+            )}
+          >
+            <Guitar className="w-4 h-4" />
+            Bass
+          </button>
+        </div>
       </div>
 
       {/* View Mode Toggle */}
@@ -136,10 +172,20 @@ export function ConfigPanel({ state, actions }: ConfigPanelProps) {
           >
             {SCALE_MODES.map((m) => (
               <option key={m.value} value={m.value}>
-                {m.label}
+                {m.label} — {m.brightness}
               </option>
             ))}
           </select>
+          {(() => {
+            const selected = SCALE_MODES.find(m => m.value === mode)
+            return selected ? (
+              <div className="mt-2 text-xs space-y-0.5">
+                <p className="text-primary">{selected.brightness}</p>
+                <p className="text-text-muted italic">{selected.adjective}</p>
+                <p className="text-text-muted">{selected.genre}</p>
+              </div>
+            ) : null
+          })()}
         </div>
       ) : (
         <div className="mb-6">
@@ -153,10 +199,13 @@ export function ConfigPanel({ state, actions }: ConfigPanelProps) {
           >
             {CHORD_TYPES.map((c) => (
               <option key={c.value} value={c.value}>
-                {c.label}
+                {c.label} — {c.mood.split(',')[0]}
               </option>
             ))}
           </select>
+          <p className="mt-2 text-xs text-primary italic">
+            {CHORD_TYPES.find(c => c.value === chordType)?.mood}
+          </p>
         </div>
       )}
 
@@ -193,7 +242,7 @@ export function ConfigPanel({ state, actions }: ConfigPanelProps) {
           onClick={() => setShowTuning(!showTuning)}
           className="flex items-center justify-between w-full text-sm font-medium text-text-muted hover:text-text transition-colors"
         >
-          <span>Guitar Tuning</span>
+          <span>{instrument === 'guitar' ? 'Guitar' : 'Bass'} Tuning</span>
           {showTuning ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
 
@@ -209,7 +258,7 @@ export function ConfigPanel({ state, actions }: ConfigPanelProps) {
                 onChange={(e) => setTuningPreset(e.target.value)}
                 className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-text focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                {Object.entries(TUNING_PRESETS).map(([key, preset]) => (
+                {Object.entries(tuningPresets).map(([key, preset]) => (
                   <option key={key} value={key}>
                     {preset.label}
                   </option>

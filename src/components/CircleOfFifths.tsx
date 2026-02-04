@@ -7,6 +7,7 @@ import {
   isInScale,
   areSameNote,
   getScaleDegrees,
+  getRelativeMinor,
 } from '@/lib/music-theory'
 import type { AccidentalMode } from '@/hooks/useMusicState'
 
@@ -21,9 +22,10 @@ interface CircleOfFifthsProps {
 const SIZE = 450
 const CENTER = SIZE / 2
 const OUTER_RADIUS = 180
-const MIDDLE_RADIUS = 140
-const INNER_RADIUS = 100
-const TRIAD_RADIUS = 60
+const MIDDLE_RADIUS = 145
+const INNER_RADIUS = 110
+const RELATIVE_MINOR_RADIUS = 75
+const TRIAD_RADIUS = 40
 
 function polarToCartesian(cx: number, cy: number, radius: number, angleDeg: number) {
   const angleRad = ((angleDeg - 90) * Math.PI) / 180
@@ -106,6 +108,7 @@ export function CircleOfFifths({
 
   // Map each circle position to its scale degree info (if in scale)
   const circleData = useMemo(() => {
+    const useSharps = accidentalMode === 'sharps'
     return circleNotes.map((note, index) => {
       const isActive = isInScale(note, activeNotes)
       const isTonic = areSameNote(note, tonic)
@@ -113,16 +116,20 @@ export function CircleOfFifths({
       // Find if this note is a scale degree
       const degreeInfo = scaleDegrees.find(deg => areSameNote(deg.note, note))
 
+      // Get the relative minor for this major key position
+      const relativeMinor = getRelativeMinor(note, useSharps)
+
       return {
         note,
         index,
         isActive,
         isTonic,
         degreeInfo,
+        relativeMinor,
         triad: degreeInfo ? getTriadNotes(degreeInfo.note, degreeInfo.quality) : null,
       }
     })
-  }, [circleNotes, activeNotes, tonic, scaleDegrees])
+  }, [circleNotes, activeNotes, tonic, scaleDegrees, accidentalMode])
 
   // Calculate arc positions for Major, Minor, Diminished based on scale degrees
   const qualityArcs = useMemo(() => {
@@ -358,16 +365,56 @@ export function CircleOfFifths({
           })}
         </g>
 
+        {/* Relative Minor ring */}
+        <g>
+          {circleData.map(({ note, index, relativeMinor, isTonic }) => {
+            const startAngle = index * sliceAngle - sliceAngle / 2
+            const endAngle = startAngle + sliceAngle
+            const midAngle = startAngle + sliceAngle / 2
+            const labelPos = polarToCartesian(CENTER, CENTER, (INNER_RADIUS + RELATIVE_MINOR_RADIUS) / 2, midAngle)
+
+            const bgPath = createWedgePath(CENTER, CENTER, RELATIVE_MINOR_RADIUS, INNER_RADIUS, startAngle, endAngle)
+
+            // Check if this relative minor's root is in the current scale
+            const minorRoot = relativeMinor.replace('m', '')
+            const isMinorActive = isInScale(minorRoot, activeNotes)
+
+            return (
+              <g key={`relative-minor-${note}`}>
+                <path
+                  d={bgPath}
+                  fill={isTonic ? 'var(--color-primary)' : isMinorActive ? 'var(--color-surface-hover)' : 'var(--color-surface)'}
+                  stroke="var(--color-border)"
+                  strokeWidth="1"
+                  opacity={isMinorActive || isTonic ? "0.6" : "0.3"}
+                />
+                <text
+                  x={labelPos.x}
+                  y={labelPos.y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill={isMinorActive || isTonic ? 'var(--color-minor)' : 'var(--color-text-muted)'}
+                  fontSize="11"
+                  fontWeight={isMinorActive || isTonic ? '600' : '400'}
+                  className="pointer-events-none select-none"
+                >
+                  {relativeMinor}
+                </text>
+              </g>
+            )
+          })}
+        </g>
+
         {/* Inner ring - Triads */}
         <g>
           {circleData.map(({ note, index, triad, isTonic }) => {
             const startAngle = index * sliceAngle - sliceAngle / 2
             const endAngle = startAngle + sliceAngle
             const midAngle = startAngle + sliceAngle / 2
-            const labelPos = polarToCartesian(CENTER, CENTER, (INNER_RADIUS + TRIAD_RADIUS) / 2, midAngle)
+            const labelPos = polarToCartesian(CENTER, CENTER, (RELATIVE_MINOR_RADIUS + TRIAD_RADIUS) / 2, midAngle)
 
             // Background slice
-            const bgPath = createWedgePath(CENTER, CENTER, TRIAD_RADIUS, INNER_RADIUS, startAngle, endAngle)
+            const bgPath = createWedgePath(CENTER, CENTER, TRIAD_RADIUS, RELATIVE_MINOR_RADIUS, startAngle, endAngle)
 
             if (!triad) {
               return (
@@ -396,7 +443,7 @@ export function CircleOfFifths({
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill="var(--color-text-muted)"
-                  fontSize="9"
+                  fontSize="8"
                   className="pointer-events-none select-none"
                 >
                   {triad.join('-')}

@@ -8,9 +8,11 @@ import {
   FRET_COUNT,
   type FretboardNote,
   type StringTuning,
+  type InstrumentType,
 } from '@/lib/music-theory'
 
 interface GuitarFretboardProps {
+  instrument?: InstrumentType
   activeNotes: string[]
   tonic: string
   bassNote?: string
@@ -24,8 +26,10 @@ interface GuitarFretboardProps {
 const FRET_MARKERS = [3, 5, 7, 9, 12, 15]
 const DOUBLE_MARKERS = [12]
 
-// Octave colors
+// Octave colors (extended for bass frequencies)
 const OCTAVE_COLORS: Record<number, string> = {
+  0: 'bg-octave-0',
+  1: 'bg-octave-1',
   2: 'bg-octave-2',
   3: 'bg-octave-3',
   4: 'bg-octave-4',
@@ -33,6 +37,7 @@ const OCTAVE_COLORS: Record<number, string> = {
 }
 
 export function GuitarFretboard({
+  instrument = 'guitar',
   activeNotes,
   tonic,
   bassNote,
@@ -44,6 +49,7 @@ export function GuitarFretboard({
 }: GuitarFretboardProps) {
   const effectiveBass = bassNote || tonic
   const fretboardNotes = useMemo(() => generateFretboardNotes(tuning), [tuning])
+  const instrumentLabel = instrument === 'guitar' ? 'Guitar' : 'Bass'
 
   // Group notes by string and fret for easy lookup
   const noteGrid = useMemo(() => {
@@ -67,7 +73,7 @@ export function GuitarFretboard({
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-text">Fretboard Visualizer</h2>
+        <h2 className="text-lg font-semibold text-text">{instrumentLabel} Fretboard</h2>
         <div className="flex items-center gap-4 text-sm">
           {selectionMode ? (
             <span className="text-primary text-sm">Click notes to select</span>
@@ -83,14 +89,29 @@ export function GuitarFretboard({
                   <span className="text-text-muted">Bass</span>
                 </div>
               )}
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-octave-3"></span>
-                <span className="text-text-muted">Oct 3</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-octave-4"></span>
-                <span className="text-text-muted">Oct 4</span>
-              </div>
+              {instrument === 'bass' ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-octave-1"></span>
+                    <span className="text-text-muted">Oct 1</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-octave-2"></span>
+                    <span className="text-text-muted">Oct 2</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-octave-3"></span>
+                    <span className="text-text-muted">Oct 3</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-octave-4"></span>
+                    <span className="text-text-muted">Oct 4</span>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
@@ -144,11 +165,11 @@ export function GuitarFretboard({
 
                     {/* Frets */}
                     <div className="flex flex-1 relative">
-                      {/* String line */}
+                      {/* String line - thickness increases for lower strings */}
                       <div
                         className="absolute left-0 right-0 top-1/2 h-[2px] bg-zinc-600"
                         style={{
-                          height: `${1 + (5 - stringIndex) * 0.3}px`,
+                          height: `${1 + ((tuning.length - 1 - stringIndex) / (tuning.length - 1)) * (instrument === 'bass' ? 2 : 1.5)}px`,
                         }}
                       />
 

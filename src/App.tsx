@@ -63,7 +63,7 @@ function App() {
             Music Theory Visualizer
           </h1>
           <p className="text-text-muted text-sm mt-1">
-            Interactive Circle of Fifths and Guitar Fretboard
+            Interactive Circle of Fifths and {state.instrument === 'guitar' ? 'Guitar' : 'Bass'} Fretboard
           </p>
         </header>
 
@@ -89,8 +89,9 @@ function App() {
         {/* Divider */}
         <div className="my-8 border-t border-border" />
 
-        {/* Guitar Fretboard */}
+        {/* Fretboard */}
         <GuitarFretboard
+          instrument={state.instrument}
           activeNotes={fretboardNotes}
           tonic={fretboardTonic}
           bassNote={fretboardBass}
